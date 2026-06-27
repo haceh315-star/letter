@@ -8,7 +8,13 @@ import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///letters.db')
+
+# Vercel 서버리스: SQLite는 /tmp 에만 쓰기 가능
+_db_url = os.environ.get('DATABASE_URL', 'sqlite:////tmp/letters.db')
+# Postgres URL이 postgres:// 로 시작하면 postgresql:// 로 변환 (SQLAlchemy 요구)
+if _db_url.startswith('postgres://'):
+    _db_url = _db_url.replace('postgres://', 'postgresql://', 1)
+app.config['SQLALCHEMY_DATABASE_URI'] = _db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -51,6 +57,21 @@ class Letter(db.Model):
     is_deleted_by_recipient = db.Column(db.Boolean, default=False)
 
 # ──────────────────────────────────────────
+# DB 자동 초기화 (첫 요청 시 1회)
+# ──────────────────────────────────────────
+
+def init_db():
+    db.create_all()
+    if not User.query.filter_by(username='admin').first():
+        admin = User(username='admin', email='admin@letterbox.com', is_admin=True)
+        admin.set_password('admin1234')
+        db.session.add(admin)
+        db.session.commit()
+
+with app.app_context():
+    init_db()
+
+# ──────────────────────────────────────────
 # Auth decorators
 # ──────────────────────────────────────────
 
@@ -68,7 +89,7 @@ def admin_required(f):
     def decorated(*args, **kwargs):
         if 'user_id' not in session:
             return redirect(url_for('login'))
-        user = User.query.get(session['user_id'])
+        user = db.session.get(User, session['user_id'])
         if not user or not user.is_admin:
             flash('관리자 권한이 필요합니다.', 'danger')
             return redirect(url_for('home'))
@@ -77,7 +98,7 @@ def admin_required(f):
 
 def current_user():
     if 'user_id' in session:
-        return User.query.get(session['user_id'])
+        return db.session.get(User, session['user_id'])
     return None
 
 # ──────────────────────────────────────────
@@ -94,11 +115,9 @@ def register():
         if not username or not email or not password:
             flash('모든 항목을 입력해주세요.', 'danger')
             return render_template('register.html')
-
         if User.query.filter_by(username=username).first():
             flash('이미 사용 중인 아이디입니다.', 'danger')
             return render_template('register.html')
-
         if User.query.filter_by(email=email).first():
             flash('이미 사용 중인 이메일입니다.', 'danger')
             return render_template('register.html')
@@ -148,8 +167,7 @@ def home():
         Letter.query
         .filter_by(recipient_id=user.id, is_deleted_by_recipient=False)
         .order_by(Letter.sent_at.desc())
-        .limit(5)
-        .all()
+        .limit(5).all()
     )
     total_received = Letter.query.filter_by(recipient_id=user.id, is_deleted_by_recipient=False).count()
     total_sent = Letter.query.filter_by(sender_id=user.id, is_deleted_by_sender=False).count()
@@ -179,23 +197,17 @@ def write():
             flash('모든 항목을 입력해주세요.', 'danger')
             return render_template('write.html', user=user, users=users)
 
-        recipient = User.query.get(recipient_id)
+        recipient = db.session.get(User, int(recipient_id))
         if not recipient:
             flash('받는 사람을 찾을 수 없습니다.', 'danger')
             return render_template('write.html', user=user, users=users)
 
-        letter = Letter(
-            sender_id=user.id,
-            recipient_id=int(recipient_id),
-            subject=subject,
-            body=body
-        )
+        letter = Letter(sender_id=user.id, recipient_id=int(recipient_id), subject=subject, body=body)
         db.session.add(letter)
         db.session.commit()
         flash(f'{recipient.username}님께 편지를 보냈습니다. 💌', 'success')
         return redirect(url_for('sent'))
 
-    # Pre-fill recipient if passed via query param
     to_user = request.args.get('to')
     return render_template('write.html', user=user, users=users, to_user=to_user)
 
@@ -207,8 +219,7 @@ def inbox():
     letters = (
         Letter.query
         .filter_by(recipient_id=user.id, is_deleted_by_recipient=False)
-        .order_by(Letter.sent_at.desc())
-        .all()
+        .order_by(Letter.sent_at.desc()).all()
     )
     return render_template('inbox.html', user=user, letters=letters)
 
@@ -220,8 +231,7 @@ def sent():
     letters = (
         Letter.query
         .filter_by(sender_id=user.id, is_deleted_by_sender=False)
-        .order_by(Letter.sent_at.desc())
-        .all()
+        .order_by(Letter.sent_at.desc()).all()
     )
     return render_template('sent.html', user=user, letters=letters)
 
@@ -230,9 +240,8 @@ def sent():
 @login_required
 def view_letter(letter_id):
     user = current_user()
-    letter = Letter.query.get_or_404(letter_id)
+    letter = db.get_or_404(Letter, letter_id)
 
-    # Access control
     if letter.recipient_id != user.id and letter.sender_id != user.id and not user.is_admin:
         flash('접근 권한이 없습니다.', 'danger')
         return redirect(url_for('home'))
@@ -248,7 +257,7 @@ def view_letter(letter_id):
 @login_required
 def delete_letter(letter_id):
     user = current_user()
-    letter = Letter.query.get_or_404(letter_id)
+    letter = db.get_or_404(Letter, letter_id)
 
     if letter.recipient_id == user.id:
         letter.is_deleted_by_recipient = True
@@ -286,7 +295,7 @@ def admin_dashboard():
     )
 
 # ──────────────────────────────────────────
-# API — unread count (for badge polling)
+# API
 # ──────────────────────────────────────────
 
 @app.route('/api/unread')
@@ -309,21 +318,6 @@ def inject_globals():
     return dict(current_user=user, unread_count=unread)
 
 
-# ──────────────────────────────────────────
-# Init DB + seed admin
-# ──────────────────────────────────────────
-
-def init_db():
-    with app.app_context():
-        db.create_all()
-        if not User.query.filter_by(username='admin').first():
-            admin = User(username='admin', email='admin@letterbox.com', is_admin=True)
-            admin.set_password('admin1234')
-            db.session.add(admin)
-            db.session.commit()
-            print("✅ Admin user created: admin / admin1234")
-
-
+# Vercel은 이 `app` 객체를 직접 참조합니다
 if __name__ == '__main__':
-    init_db()
     app.run(debug=True)
