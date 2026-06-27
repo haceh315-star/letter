@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}편지 쓰기{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <p class="page-eyebrow">새 메시지</p>
+    <h1 class="page-title">편지 쓰기</h1>
+  </div>
+</div>
+
+<div class="card card-form">
+  <form method="POST" action="{{ url_for('write') }}">
+    <div class="form-group">
+      <label class="form-label" for="recipient_id">받는 사람</label>
+      <select class="form-select" id="recipient_id" name="recipient_id" required>
+        <option value="">— 받는 사람을 선택하세요 —</option>
+        {% for u in users %}
+        <option value="{{ u.id }}" {% if to_user == u.username %}selected{% endif %}>{{ u.username }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="subject">제목</label>
+      <input class="form-input" type="text" id="subject" name="subject"
+             placeholder="편지 제목을 입력하세요" maxlength="200" required />
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="body">내용</label>
+      <textarea class="form-textarea" id="body" name="body"
+                placeholder="마음을 담아 편지를 써보세요..." rows="12" required></textarea>
+    </div>
+
+    <div class="form-actions">
+      <a href="{{ url_for('home') }}" class="btn btn-ghost">취소</a>
+      <button type="submit" class="btn btn-primary">💌 편지 보내기</button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

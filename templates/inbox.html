@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}받은편지함{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <p class="page-eyebrow">메일함</p>
+    <h1 class="page-title">받은편지함</h1>
+  </div>
+  <span class="count-badge">{{ letters|length }}통</span>
+</div>
+
+{% if letters %}
+<ul class="letter-list card">
+  {% for letter in letters %}
+  <li class="letter-item {% if not letter.is_read %}unread{% endif %}">
+    <a href="{{ url_for('view_letter', letter_id=letter.id) }}" class="letter-row">
+      <div class="letter-meta">
+        {% if not letter.is_read %}<span class="unread-dot"></span>{% endif %}
+        <span class="letter-from">{{ letter.sender.username }}</span>
+      </div>
+      <span class="letter-subject">{{ letter.subject }}</span>
+      <span class="letter-date">{{ letter.sent_at.strftime('%Y.%m.%d') }}</span>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<div class="empty-state">
+  <p class="empty-icon">📭</p>
+  <p class="empty-text">받은 편지가 없습니다.</p>
+  <a href="{{ url_for('write') }}" class="btn btn-primary" style="margin-top:1rem">첫 편지 써보기</a>
+</div>
+{% endif %}
+
+{% endblock %}

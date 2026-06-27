@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}{{ letter.subject }}{% endblock %}
+{% block content %}
+
+{% set is_mine = letter.sender_id == current_user.id %}
+
+<div class="page-header">
+  <div>
+    <p class="page-eyebrow">
+      {% if is_mine %}보낸 편지{% else %}받은 편지{% endif %}
+    </p>
+    <h1 class="page-title letter-view-title">{{ letter.subject }}</h1>
+  </div>
+</div>
+
+<div class="card letter-card">
+  <div class="letter-header">
+    <div class="letter-parties">
+      <div class="letter-party">
+        <span class="party-label">보낸 사람</span>
+        <span class="party-name">{{ letter.sender.username }}</span>
+      </div>
+      <div class="letter-arrow">→</div>
+      <div class="letter-party">
+        <span class="party-label">받는 사람</span>
+        <span class="party-name">{{ letter.recipient.username }}</span>
+      </div>
+    </div>
+    <span class="letter-timestamp">{{ letter.sent_at.strftime('%Y년 %m월 %d일 %H:%M') }}</span>
+  </div>
+
+  <div class="letter-divider"></div>
+
+  <div class="letter-body">{{ letter.body | nl2br }}</div>
+
+  <div class="letter-footer">
+    <div class="letter-actions">
+      {% if is_mine %}
+        <a href="{{ url_for('sent') }}" class="btn btn-ghost">← 보낸편지함</a>
+        <a href="{{ url_for('write') }}?to={{ letter.recipient.username }}" class="btn btn-secondary">다시 쓰기</a>
+      {% else %}
+        <a href="{{ url_for('inbox') }}" class="btn btn-ghost">← 받은편지함</a>
+        <a href="{{ url_for('write') }}?to={{ letter.sender.username }}" class="btn btn-secondary">답장하기</a>
+      {% endif %}
+    </div>
+    <form method="POST" action="{{ url_for('delete_letter', letter_id=letter.id) }}"
+          onsubmit="return confirm('이 편지를 삭제할까요?')">
+      <button type="submit" class="btn btn-danger-ghost">삭제</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

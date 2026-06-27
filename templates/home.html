@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}홈{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <p class="page-eyebrow">안녕하세요</p>
+    <h1 class="page-title">{{ user.username }}님의 편지함</h1>
+  </div>
+  <a href="{{ url_for('write') }}" class="btn btn-primary">✉ 새 편지 쓰기</a>
+</div>
+
+<!-- Stats -->
+<div class="stats-row">
+  <div class="stat-card">
+    <span class="stat-number">{{ total_received }}</span>
+    <span class="stat-label">받은 편지</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">{{ total_sent }}</span>
+    <span class="stat-label">보낸 편지</span>
+  </div>
+  <div class="stat-card highlight">
+    <span class="stat-number">{{ unread_count }}</span>
+    <span class="stat-label">읽지 않은 편지</span>
+  </div>
+</div>
+
+<!-- Recent letters -->
+<section class="section">
+  <div class="section-header">
+    <h2 class="section-title">최근 받은 편지</h2>
+    <a href="{{ url_for('inbox') }}" class="section-link">전체 보기 →</a>
+  </div>
+
+  {% if recent_letters %}
+    <ul class="letter-list">
+      {% for letter in recent_letters %}
+      <li class="letter-item {% if not letter.is_read %}unread{% endif %}">
+        <a href="{{ url_for('view_letter', letter_id=letter.id) }}" class="letter-row">
+          <div class="letter-meta">
+            {% if not letter.is_read %}<span class="unread-dot"></span>{% endif %}
+            <span class="letter-from">{{ letter.sender.username }}</span>
+          </div>
+          <span class="letter-subject">{{ letter.subject }}</span>
+          <span class="letter-date">{{ letter.sent_at.strftime('%m.%d') }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="empty-state">
+      <p class="empty-icon">📭</p>
+      <p class="empty-text">아직 받은 편지가 없습니다.</p>
+      <p class="empty-sub">먼저 편지를 써보는 건 어떨까요?</p>
+    </div>
+  {% endif %}
+</section>
+
+{% endblock %}

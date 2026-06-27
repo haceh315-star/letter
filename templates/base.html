@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}LetterBox{% endblock %} — 편지함</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&family=Noto+Sans+KR:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+
+{% if current_user %}
+<nav class="nav">
+  <a href="{{ url_for('home') }}" class="nav-logo">💌 LetterBox</a>
+  <ul class="nav-links">
+    <li><a href="{{ url_for('home') }}" class="nav-link {% if request.endpoint == 'home' %}active{% endif %}">홈</a></li>
+    <li><a href="{{ url_for('write') }}" class="nav-link {% if request.endpoint == 'write' %}active{% endif %}">편지 쓰기</a></li>
+    <li>
+      <a href="{{ url_for('inbox') }}" class="nav-link {% if request.endpoint == 'inbox' %}active{% endif %}">
+        받은편지함
+        {% if unread_count > 0 %}<span class="badge">{{ unread_count }}</span>{% endif %}
+      </a>
+    </li>
+    <li><a href="{{ url_for('sent') }}" class="nav-link {% if request.endpoint == 'sent' %}active{% endif %}">보낸편지함</a></li>
+    {% if current_user.is_admin %}
+    <li><a href="{{ url_for('admin_dashboard') }}" class="nav-link admin-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">관리자</a></li>
+    {% endif %}
+  </ul>
+  <div class="nav-user">
+    <span class="nav-username">{{ current_user.username }}</span>
+    <a href="{{ url_for('logout') }}" class="nav-logout">로그아웃</a>
+  </div>
+</nav>
+{% endif %}
+
+<main class="main {% if not current_user %}auth-layout{% endif %}">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-container">
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

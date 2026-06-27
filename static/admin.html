@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}관리자{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <p class="page-eyebrow">Admin</p>
+    <h1 class="page-title">관리자 대시보드</h1>
+  </div>
+</div>
+
+<div class="stats-row">
+  <div class="stat-card">
+    <span class="stat-number">{{ total_users }}</span>
+    <span class="stat-label">전체 회원</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-number">{{ total_letters }}</span>
+    <span class="stat-label">전체 편지</span>
+  </div>
+</div>
+
+<!-- All letters -->
+<section class="section">
+  <div class="section-header">
+    <h2 class="section-title">최근 편지 (전체)</h2>
+  </div>
+  {% if recent_letters %}
+  <ul class="letter-list card">
+    {% for letter in recent_letters %}
+    <li class="letter-item">
+      <a href="{{ url_for('view_letter', letter_id=letter.id) }}" class="letter-row">
+        <div class="letter-meta">
+          <span class="letter-from">{{ letter.sender.username }}</span>
+          <span class="admin-arrow">→</span>
+          <span class="letter-from">{{ letter.recipient.username }}</span>
+          {% if not letter.is_read %}<span class="unread-dot"></span>{% endif %}
+        </div>
+        <span class="letter-subject">{{ letter.subject }}</span>
+        <span class="letter-date">{{ letter.sent_at.strftime('%Y.%m.%d') }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+
+<!-- User list -->
+<section class="section">
+  <div class="section-header">
+    <h2 class="section-title">회원 목록</h2>
+  </div>
+  <div class="card">
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>아이디</th>
+          <th>이메일</th>
+          <th>권한</th>
+          <th>가입일</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ u.id }}</td>
+          <td>{{ u.username }}</td>
+          <td>{{ u.email }}</td>
+          <td>{% if u.is_admin %}<span class="admin-tag">관리자</span>{% else %}일반{% endif %}</td>
+          <td>{{ u.created_at.strftime('%Y.%m.%d') }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{% endblock %}
